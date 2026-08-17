@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>To-Do List</title>
+<style>
+:root{
+  /* Surfaces — deep navy drawn from BGIS Biscay #1C3D6D, darkened for
+     comfortable long reading. Deliberately not pure black: pure black
+     with light text causes halation (text blooms and smears). */
+  --ink:#0d1522;
+  --panel:#152134;
+  --panel-2:#1b2a41;
+  --edge:#2c3b52;
+  --edge-bright:#3e5273;
+
+  /* Text — off-white, never #fff */
+  --paper:#e8ebef;
+  --mute:#a4b1c2;
+  --faint:#8592a4;
+
+  /* BGIS brand blue #4190D9. Used pure for buttons, borders, and the pip;
+     brightened to #63a9e8 where it appears as small text on dark. */
+  --signal:#4190D9;
+  --signal-text:#63a9e8;
+  --signal-dim:#1C3D6D;
+
+  --go:#57d189;
+  --move:#74b3ec;
+  --hold:#ff8f80;
+  --warn:#ffb96e;
+
+  --r:10px;
+  --base:17px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+html{font-size:var(--base)}
+
+body{
+  font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--ink);
+  color:var(--paper);
+  font-size:1rem;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:5rem;
+}
+
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px;border-radius:4px}
+
+.wrap{max-width:74rem;margin:0 auto;padding:0 1.25rem}
+
+/* ── Masthead ─────────────────────────────────────── */
+.top{border-bottom:1px solid var(--edge);background:var(--ink);position:sticky;top:0;z-index:30}
+
+.top-row{display:flex;align-items:center;gap:1rem;padding:1rem 0;flex-wrap:wrap}
+
+.mark{
+  font-size:1.05rem;font-weight:800;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--paper);
+}
+.mark span{color:var(--signal)}
+
+.top-tools{margin-left:auto;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+
+.pip-wrap{display:flex;align-items:center;gap:.45rem}
+.pip{width:.7rem;height:.7rem;border-radius:50%;flex:none}
+.pip-ok{background:var(--go);box-shadow:0 0 6px rgba(87,209,137,.6)}
+.pip-bad{background:var(--hold);box-shadow:0 0 6px rgba(255,143,128,.6)}
+.pip-wait{background:var(--warn)}
+.pip-local{background:var(--faint)}
+.pip-label{font-size:.82rem;font-weight:600;color:var(--mute);white-space:nowrap}
+
+.btn{
+  padding:.55rem 1rem;border-radius:var(--r);border:1px solid var(--edge);
+  color:var(--paper);font-weight:600;font-size:.95rem;
+  transition:background .15s,border-color .15s;
+}
+.btn:hover{background:var(--panel-2);border-color:var(--edge-bright)}
+
+.btn-key{background:var(--signal);color:#081120;border-color:var(--signal);font-weight:700}
+.btn-key:hover{background:#5aa0e2;border-color:#5aa0e2}
+
+.btn-ghost{border-color:transparent;color:var(--mute)}
+.btn-ghost:hover{color:var(--paper);background:var(--panel-2)}
+
+.btn-danger{color:var(--hold);border-color:var(--edge)}
+.btn-danger:hover{background:#2e1f1d;border-color:var(--hold)}
+
+/* ── Tabs ─────────────────────────────────────────── */
+.tabs{display:flex;gap:.25rem;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+
+.tab{
+  padding:.7rem 1rem;font-weight:600;color:var(--faint);
+  border-bottom:3px solid transparent;white-space:nowrap;
+}
+.tab:hover{color:var(--paper)}
+.tab-on{color:var(--signal-text);border-bottom-color:var(--signal)}
+
+/* ── Panels ───────────────────────────────────────── */
+.panel{background:var(--panel);border:1px solid var(--edge);border-radius:var(--r);padding:1.35rem}
+
+.panel-h{
+  font-size:.78rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:1rem;
+}
+
+.screen{display:none;padding-top:1.75rem}
+.screen-on{display:block}
+
+/* ── Next up: the signature block ─────────────────── */
+.next{
+  background:var(--panel);border:1px solid var(--edge);border-radius:var(--r);
+  border-left:5px solid var(--signal);padding:1.5rem;margin-bottom:1.25rem;
+}
+
+.next-top{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin-bottom:.5rem;flex-wrap:wrap}
+
+.next-eyebrow{
+  font-size:.78rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--signal-text);
+}
+
+.next-due{font-size:.9rem;font-weight:700;color:var(--mute)}
+
+.next-title{font-size:1.7rem;font-weight:750;line-height:1.2;letter-spacing:-.015em;margin-bottom:.6rem}
+
+.next-meta{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1.1rem}
+
+.next-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+
+.queue{display:flex;flex-direction:column;gap:.4rem}
+
+.queue-row{
+  display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;
+  background:var(--panel);border:1px solid var(--edge);border-radius:var(--r);
+  text-align:left;width:100%;
+}
+.queue-row:hover{background:var(--panel-2);border-color:var(--edge-bright)}
+
+.queue-rank{font-size:.85rem;font-weight:800;color:var(--faint);min-width:1.4rem}
+.queue-name{font-weight:600;flex:1;min-width:0}
+.queue-due{font-size:.88rem;font-weight:700;color:var(--mute);white-space:nowrap}
+
+/* ── Runway bar ───────────────────────────────────── */
+.runway{height:5px;background:var(--panel-2);border-radius:99px;overflow:hidden;margin-top:.55rem}
+.runway-fill{height:100%;border-radius:99px;background:var(--signal)}
+.runway-fill.tight{background:var(--warn)}
+.runway-fill.over{background:var(--hold)}
+
+/* ── Chips ────────────────────────────────────────── */
+.chip{
+  display:inline-block;padding:.22rem .7rem;border-radius:99px;
+  font-size:.8rem;font-weight:700;border:1px solid;white-space:nowrap;
+}
+.s-backlog{color:var(--mute);border-color:var(--edge-bright);background:#262b33}
+.s-in-progress{color:var(--move);border-color:#31536f;background:#182533}
+.s-blocked{color:var(--hold);border-color:#6d3730;background:#2e1c19}
+.s-done{color:var(--go);border-color:#2f6144;background:#16281e}
+
+.p-critical{color:var(--hold);font-weight:800}
+.p-high{color:var(--warn);font-weight:700}
+.p-medium{color:var(--signal-text);font-weight:600}
+.p-low{color:var(--faint);font-weight:600}
+
+.due-hot{color:var(--hold);font-weight:800}
+.due-soon{color:var(--warn);font-weight:700}
+
+.meta{color:var(--mute);font-size:.9rem}
+
+/* ── Counters ─────────────────────────────────────── */
+.counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.85rem;margin-bottom:1.25rem}
+
+.counter{background:var(--panel);border:1px solid var(--edge);border-radius:var(--r);padding:1.1rem}
+.counter-n{font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-.02em}
+.counter-l{font-size:.82rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:.45rem}
+
+.n-move{color:var(--move)}
+.n-hold{color:var(--hold)}
+.n-go{color:var(--go)}
+.n-mute{color:var(--paper)}
+
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.25rem;margin-bottom:1.25rem}
+
+.line{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.65rem 0;border-bottom:1px solid var(--edge)}
+.line:last-child{border-bottom:none}
+
+.count-pill{background:var(--panel-2);border:1px solid var(--edge-bright);color:var(--paper);padding:.15rem .7rem;border-radius:99px;font-size:.85rem;font-weight:700}
+
+/* ── Pipeline ─────────────────────────────────────── */
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9rem;align-items:start}
+
+.col{background:#191d23;border:1px solid var(--edge);border-radius:var(--r);padding:.8rem;min-height:7rem}
+.col-drop{border-color:var(--signal);background:#1e3050}
+
+.col-h{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.8rem;padding:0 .2rem}
+.col-name{font-size:.8rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.col-n{font-size:.8rem;font-weight:800;color:var(--faint)}
+
+.card{
+  background:var(--panel);border:1px solid var(--edge);border-radius:8px;
+  padding:.85rem;margin-bottom:.6rem;text-align:left;width:100%;display:block;
+}
+.card:hover{border-color:var(--edge-bright);background:var(--panel-2)}
+.card:last-child{margin-bottom:0}
+.card-drag{opacity:.4}
+
+.card-title{font-weight:650;line-height:1.35;margin-bottom:.45rem}
+.card-foot{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;font-size:.85rem}
+
+.col-empty{color:var(--faint);font-size:.88rem;text-align:center;padding:1.2rem .5rem;line-height:1.4}
+
+/* ── Register table ───────────────────────────────── */
+.tablewrap{background:var(--panel);border:1px solid var(--edge);border-radius:var(--r);overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:44rem}
+th{
+  text-align:left;padding:.9rem 1.1rem;font-size:.78rem;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  border-bottom:1px solid var(--edge);background:#191d23;white-space:nowrap;
+}
+td{padding:.9rem 1.1rem;border-bottom:1px solid var(--edge);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+.cell-title{font-weight:650}
+.t-right{text-align:right}
+
+/* ── History ──────────────────────────────────────── */
+.hist{background:var(--panel);border:1px solid var(--edge);border-radius:var(--r);padding:1.35rem;margin-bottom:1.1rem}
+.hist-top{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:1.2rem;flex-wrap:wrap}
+.hist-title{font-size:1.15rem;font-weight:700;line-height:1.3}
+.hist-sub{color:var(--mute);font-size:.9rem;margin-top:.25rem}
+
+.track{padding-left:1.6rem;border-left:2px solid var(--edge);display:flex;flex-direction:column;gap:1rem}
+.stop{position:relative}
+.stop::before{
+  content:'';position:absolute;left:-2.1rem;top:.5rem;width:.65rem;height:.65rem;
+  border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--panel);
+}
+.stop-note{color:var(--mute);font-size:.92rem;margin-top:.4rem}
+.stop-when{color:var(--faint);font-size:.82rem;margin-top:.25rem}
+
+/* ── Empty state ──────────────────────────────────── */
+.blank{text-align:center;padding:4rem 1.5rem;border:1px dashed var(--edge-bright);border-radius:var(--r)}
+.blank-h{font-size:1.3rem;font-weight:700;margin-bottom:.5rem}
+.blank-p{color:var(--mute);margin-bottom:1.5rem;max-width:26rem;margin-left:auto;margin-right:auto}
+
+/* ── Sheet (add / edit / detail) ──────────────────── */
+.veil{
+  position:fixed;inset:0;background:rgba(6,8,11,.78);z-index:60;
+  display:none;align-items:flex-start;justify-content:center;padding:1.25rem;overflow-y:auto;
+}
+.veil-on{display:flex}
+
+.sheet{
+  background:var(--panel);border:1px solid var(--edge-bright);border-radius:var(--r);
+  width:100%;max-width:38rem;margin:auto;
+}
+
+.sheet-h{padding:1.35rem;border-bottom:1px solid var(--edge);display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.sheet-t{font-size:1.35rem;font-weight:750;line-height:1.25}
+.sheet-sub{color:var(--mute);font-size:.9rem;margin-top:.35rem}
+.sheet-x{font-size:1.5rem;line-height:1;color:var(--faint);padding:.2rem .5rem;border-radius:6px}
+.sheet-x:hover{color:var(--paper);background:var(--panel-2)}
+.sheet-b{padding:1.35rem}
+.sheet-f{padding:1.1rem 1.35rem;border-top:1px solid var(--edge);display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap}
+
+.field{margin-bottom:1.1rem}
+.field-l{display:block;font-size:.85rem;font-weight:700;color:var(--mute);margin-bottom:.4rem}
+
+.field-in,.field-sel,.field-ta{
+  width:100%;padding:.7rem .85rem;background:#12151a;
+  border:1px solid var(--edge-bright);border-radius:8px;font-size:1rem;
+}
+.field-in:focus,.field-sel:focus,.field-ta:focus{border-color:var(--signal);outline:none}
+.field-ta{min-height:5rem;resize:vertical;font-family:inherit}
+.field-sel{cursor:pointer}
+.field-hint{font-size:.85rem;color:var(--faint);margin-top:.35rem}
+
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.4rem}
+.fact-l{font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:.3rem}
+
+.log{display:flex;flex-direction:column;gap:.5rem}
+.log-row{background:var(--panel-2);border-radius:8px;padding:.7rem .85rem;display:flex;justify-content:space-between;gap:.9rem;align-items:flex-start;flex-wrap:wrap}
+.log-when{color:var(--faint);font-size:.82rem;white-space:nowrap}
+
+/* ── Read-only banner ─────────────────────────────── */
+.ro{
+  background:var(--signal-dim);border-bottom:1px solid var(--signal);
+  color:#dce9f7;padding:.7rem 0;font-size:.92rem;font-weight:600;
+}
+.ro-in{display:flex;gap:.6rem;align-items:center;justify-content:center;flex-wrap:wrap;text-align:center}
+
+.toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(150%);
+  background:var(--panel);border:1px solid var(--edge-bright);border-left:4px solid var(--go);
+  padding:.8rem 1.2rem;border-radius:var(--r);font-weight:600;z-index:90;
+  transition:transform .22s ease;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:calc(100vw - 2.5rem);
+}
+.toast-on{transform:translateX(-50%) translateY(0)}
+
+.hide{display:none !important}
+
+@media(max-width:860px){
+  .board{grid-template-columns:1fr;gap:1rem}
+  .next-title{font-size:1.35rem}
+  .facts,.pair{grid-template-columns:1fr}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<div id="roBanner" class="ro hide">
+  <div class="wrap ro-in">
+    <span>Read-only view — nothing here can be changed.</span>
+    <button class="btn btn-ghost" onclick="exitReadOnly()" style="padding:.25rem .7rem">Leave read-only</button>
+  </div>
+</div>
+
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="mark">To<span>·</span>Do List</div>
+      <div class="pip-wrap" id="pipWrap" title="Checking database connection">
+        <span class="pip pip-wait" id="pip"></span>
+        <span class="pip-label" id="pipLabel">Connecting…</span>
+      </div>
+      <div class="top-tools">
+        <button class="btn" id="shareBtn" onclick="shareLink()">Share read-only link</button>
+        <button class="btn btn-key" id="addBtn" onclick="openAdd()">+ New task</button>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab tab-on" data-screen="today">Today</button>
+      <button class="tab" data-screen="pipeline">Pipeline</button>
+      <button class="tab" data-screen="register">Register</button>
+      <button class="tab" data-screen="history">History</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="s-today" class="screen screen-on">
+    <div id="todayBody"></div>
+    <div class="counters" id="counters" style="margin-top:1.75rem"></div>
+    <div class="split">
+      <div class="panel">
+        <div class="panel-h">Open work by area</div>
+        <div id="byArea"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h">Open work by priority</div>
+        <div id="byPriority"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-pipeline" class="screen">
+    <div class="board" id="board"></div>
+    <p class="meta" style="margin-top:1rem" id="boardHint">Drag a card to another column to move it, or click it to open.</p>
+  </section>
+
+  <section id="s-register" class="screen">
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th><th>Area</th><th>Priority</th><th>Status</th><th>Deadline</th><th class="t-right">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody id="regBody"></tbody>
+      </table>
+    </div>
+    <div class="top-tools" style="margin-top:1rem;margin-left:0;justify-content:flex-start">
+      <button class="btn" onclick="exportJSON()">Download backup</button>
+      <button class="btn" id="importBtn" onclick="importJSON()">Restore from backup</button>
+      <button class="btn btn-danger" id="clearBtn" onclick="clearAll()">Clear all tasks</button>
+    </div>
+  </section>
+
+  <section id="s-history" class="screen">
+    <div id="histBody"></div>
+  </section>
+
+</main>
+
+<!-- Add / edit -->
+<div class="veil" id="editVeil">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="sheet-h">
+      <div class="sheet-t" id="editTitle">New task</div>
+      <button class="sheet-x" onclick="closeEdit()" aria-label="Close">×</button>
+    </div>
+    <div class="sheet-b">
+      <div class="field">
+        <label class="field-l" for="fTitle">Task</label>
+        <input class="field-in" id="fTitle" placeholder="What needs doing?">
+      </div>
+      <div class="field">
+        <label class="field-l" for="fDesc">Detail <span style="font-weight:500;color:var(--faint)">— optional</span></label>
+        <textarea class="field-ta" id="fDesc" placeholder="Anything you'll want to remember when you come back to this"></textarea>
+      </div>
+      <div class="pair">
+        <div class="field">
+          <label class="field-l" for="fArea">Area</label>
+          <select class="field-sel" id="fArea">
+            <option value="KODE Labs">KODE Labs</option>
+            <option value="Interventions">Interventions</option>
+            <option value="Process and Policy">Process and Policy</option>
+            <option value="R&amp;D">R&amp;D</option>
+            <option value="Reports and Reviews">Reports and Reviews</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-l" for="fPriority">Priority</label>
+          <select class="field-sel" id="fPriority">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="pair">
+        <div class="field">
+          <label class="field-l" for="fStatus">Status</label>
+          <select class="field-sel" id="fStatus">
+            <option value="backlog" selected>Backlog</option>
+            <option value="in-progress">In progress</option>
+            <option value="blocked">Blocked</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-l" for="fDeadline">Deadline</label>
+          <input class="field-in" id="fDeadline" type="date">
+        </div>
+      </div>
+      <div class="field" id="noteField">
+        <label class="field-l" for="fNote">Note for the log</label>
+        <input class="field-in" id="fNote" placeholder="Why it moved, what's next">
+        <div class="field-hint">Goes on the history trail with today's date. Handy when your boss asks what changed.</div>
+      </div>
+    </div>
+    <div class="sheet-f">
+      <button class="btn btn-danger hide" id="deleteBtn" onclick="deleteTask()">Delete task</button>
+      <button class="btn" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-key" id="saveBtn" onclick="saveTask()">Save task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail -->
+<div class="veil" id="viewVeil">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="vTitle">
+    <div class="sheet-h">
+      <div>
+        <div class="sheet-t" id="vTitle"></div>
+        <div class="sheet-sub" id="vDesc"></div>
+      </div>
+      <button class="sheet-x" onclick="closeView()" aria-label="Close">×</button>
+    </div>
+    <div class="sheet-b">
+      <div class="facts">
+        <div><div class="fact-l">Area</div><div id="vArea"></div></div>
+        <div><div class="fact-l">Priority</div><div id="vPriority"></div></div>
+        <div><div class="fact-l">Status</div><div id="vStatus"></div></div>
+        <div><div class="fact-l">Deadline</div><div id="vDeadline"></div></div>
+      </div>
+      <div class="panel-h" style="margin-bottom:.7rem">History</div>
+      <div class="log" id="vLog"></div>
+    </div>
+    <div class="sheet-f">
+      <button class="btn" onclick="closeView()">Close</button>
+      <button class="btn btn-key hide" id="vEditBtn">Edit task</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileIn" accept="application/json" class="hide">
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   STORAGE
+   Ships on localStorage so it works the moment you open it.
+   To move to Supabase: create the table with the SQL in README,
+   fill in the two constants below, set USE_SUPABASE = true.
+   ══════════════════════════════════════════════════════════════ */
+
+const USE_SUPABASE = false;
+const SUPABASE_URL = '';
+const SUPABASE_KEY = '';
+
+const KEY = 'todo.tasks.v2';   // v2: abandons any cached demo data from v1
+let memoryOnly = false;   // set if localStorage is unavailable
+
+const store = {
+  read(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ memoryOnly = true; return null; }
+  },
+  write(data){
+    // With Supabase on, each add/edit/move/delete has already been sent to the
+    // database by its own function. We still keep a local copy so the app opens
+    // instantly and survives a dropped connection.
+    try{ localStorage.setItem(KEY, JSON.stringify(data)); }
+    catch(e){ memoryOnly = true; }
+  }
+};
+
+const sbHeaders = () => ({
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  Prefer: 'return=representation'
+});
+
+let loadProblem = '';
+
+async function loadRemote(){
+  loadProblem = '';
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks?select=*`,{
+      headers: sbHeaders()
+    });
+    if(r.status === 401 || r.status === 403){
+      loadProblem = 'Database rejected the key — check SUPABASE_KEY';
+      throw new Error('HTTP ' + r.status);
+    }
+    if(r.status === 404){
+      loadProblem = 'No tasks table found — check SUPABASE_URL and run the SQL';
+      throw new Error('HTTP 404');
+    }
+    if(!r.ok){
+      loadProblem = `Database error ${r.status} — see the browser console`;
+      throw new Error('HTTP ' + r.status);
+    }
+    pipOk();
+    return await r.json();
+  }catch(err){
+    console.error('Load failed:', err);
+    if(!loadProblem) loadProblem = 'Can\'t reach the database — showing your last saved copy';
+    pipBad(loadProblem);
+    return null;
+  }
+}
+
+async function addTaskRemote(task){
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks`,{
+      method:'POST',
+      headers: sbHeaders(),
+      body: JSON.stringify(task)
+    });
+    if(!r.ok){
+      const err = await r.text();
+      throw new Error(`HTTP ${r.status}: ${err}`);
+    }
+    pipOk();
+    return await r.json();
+  }catch(err){
+    console.error('Add failed:', err);
+    pipBad('Save failed — check connection');
+    say('Save failed — changes are local only');
+    return null;
+  }
+}
+
+async function updateTaskRemote(id, task){
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`,{
+      method:'PATCH',
+      headers: sbHeaders(),
+      body: JSON.stringify(task)
+    });
+    if(!r.ok){
+      const err = await r.text();
+      throw new Error(`HTTP ${r.status}: ${err}`);
+    }
+    pipOk();
+    return await r.json();
+  }catch(err){
+    console.error('Update failed:', err);
+    pipBad('Save failed — check connection');
+    say('Save failed — changes are local only');
+    return null;
+  }
+}
+
+async function deleteTaskRemote(id){
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`,{
+      method:'DELETE',
+      headers: sbHeaders()
+    });
+    if(!r.ok){
+      const err = await r.text();
+      throw new Error(`HTTP ${r.status}: ${err}`);
+    }
+    pipOk();
+    return true;
+  }catch(err){
+    console.error('Delete failed:', err);
+    pipBad('Delete failed — check connection');
+    say('Delete failed — item still local');
+    return false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DATA
+   ══════════════════════════════════════════════════════════════ */
+
+
+let tasks = [];
+let screen = 'today';
+let editingId = null;
+let readOnly = new URLSearchParams(location.search).get('view') === 'readonly';
+
+const STATUSES = [
+  {k:'backlog',     label:'Backlog'},
+  {k:'in-progress', label:'In progress'},
+  {k:'blocked',     label:'Blocked'},
+  {k:'done',        label:'Done'}
+];
+
+const PRIORITY_RANK = {critical:0, high:1, medium:2, low:3};
+
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function today(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+
+function isoToday(){ return new Date().toISOString().slice(0,10); }
+
+function daysTo(deadline){
+  if(!deadline) return null;
+  return Math.round((new Date(deadline+'T00:00:00') - today()) / 86400000);
+}
+
+function dueText(deadline){
+  const d = daysTo(deadline);
+  if(d === null) return 'No deadline';
+  if(d < 0)  return `${Math.abs(d)} day${Math.abs(d)===1?'':'s'} overdue`;
+  if(d === 0) return 'Due today';
+  if(d === 1) return 'Due tomorrow';
+  return `${d} days left`;
+}
+
+function dueClass(deadline){
+  const d = daysTo(deadline);
+  if(d === null) return '';
+  if(d <= 1) return 'due-hot';
+  if(d <= 7) return 'due-soon';
+  return '';
+}
+
+function label(k){
+  const s = STATUSES.find(s => s.k === k);
+  if(s) return s.label;
+  return k.charAt(0).toUpperCase() + k.slice(1);
+}
+
+function chip(status){
+  return `<span class="chip s-${esc(status)}">${esc(label(status))}</span>`;
+}
+
+function openTasks(){ return tasks.filter(t => t.status !== 'done'); }
+
+/* Runway: how much of the road from "first logged" to "deadline"
+   has already gone by. Answers "how much rope is left" without
+   needing a percent-done field to keep up to date. */
+function runway(t){
+  if(!t.deadline || !t.log?.length) return null;
+  const start = new Date(t.log[0].date + 'T00:00:00');
+  const end   = new Date(t.deadline + 'T00:00:00');
+  const span  = end - start;
+  if(span <= 0) return null;
+  const gone = today() - start;
+  return Math.max(0, Math.min(1.15, gone / span));
+}
+
+function runwayBar(t){
+  const r = runway(t);
+  if(r === null) return '';
+  const cls = r >= 1 ? 'over' : r >= 0.75 ? 'tight' : '';
+  return `<div class="runway"><div class="runway-fill ${cls}" style="width:${Math.min(100, r*100).toFixed(0)}%"></div></div>`;
+}
+
+function sortByUrgency(list){
+  return [...list].sort((a,b) => {
+    const da = daysTo(a.deadline), db = daysTo(b.deadline);
+    if(da === null && db === null) return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+    if(da === null) return 1;
+    if(db === null) return -1;
+    const pa = PRIORITY_RANK[a.priority], pb = PRIORITY_RANK[b.priority];
+    // Priority leads; deadline breaks ties and overrides when something's late.
+    if(da < 0 && db >= 0) return -1;
+    if(db < 0 && da >= 0) return 1;
+    if(pa !== pb) return pa - pb;
+    return da - db;
+  });
+}
+
+let toastTimer;
+function say(msg){
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('toast-on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('toast-on'), 3200);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CONNECTION PIP
+   Green = talking to Supabase. Red = configured but failing.
+   Grey = running on local storage only (USE_SUPABASE = false).
+   ══════════════════════════════════════════════════════════════ */
+
+function setPip(state, msg){
+  const pip = $('pip'), label = $('pipLabel'), wrap = $('pipWrap');
+  pip.className = 'pip pip-' + state;
+  label.textContent = msg;
+  wrap.title = msg;
+}
+
+function pipOk(){    setPip('ok',    'Database connected'); }
+function pipBad(m){  setPip('bad',   m || 'Database unreachable'); }
+function pipLocal(){ setPip('local', 'Local only — this device'); }
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER — TODAY
+   ══════════════════════════════════════════════════════════════ */
+
+function renderToday(){
+  const open = sortByUrgency(openTasks());
+  const body = $('todayBody');
+
+  if(!tasks.length){
+    body.innerHTML = `
+      <div class="blank">
+        <div class="blank-h">Nothing tracked yet</div>
+        <div class="blank-p">Add your first task and it'll show up here, in the pipeline, and on the register.</div>
+        ${readOnly ? '' : '<button class="btn btn-key" onclick="openAdd()">+ New task</button>'}
+      </div>`;
+  } else if(!open.length){
+    body.innerHTML = `
+      <div class="blank">
+        <div class="blank-h">Everything's done</div>
+        <div class="blank-p">No open work left. Check History for what you've closed out.</div>
+      </div>`;
+  } else {
+    const [first, ...rest] = open;
+    const queue = rest.slice(0, 4).map((t, i) => `
+      <button class="queue-row" onclick="openView(${t.id})">
+        <span class="queue-rank">${i+2}</span>
+        <span class="queue-name">${esc(t.title)}</span>
+        <span class="queue-due ${dueClass(t.deadline)}">${esc(dueText(t.deadline))}</span>
+      </button>`).join('');
+
+    body.innerHTML = `
+      <div class="next">
+        <div class="next-top">
+          <div class="next-eyebrow">Next up</div>
+          <div class="next-due ${dueClass(first.deadline)}">${esc(dueText(first.deadline))}</div>
+        </div>
+        <div class="next-title">${esc(first.title)}</div>
+        <div class="next-meta">
+          ${chip(first.status)}
+          <span class="p-${esc(first.priority)}">${esc(label(first.priority))}</span>
+          <span class="meta">· ${esc(first.area || 'No area')}</span>
+        </div>
+        ${runwayBar(first)}
+        <div class="next-actions" style="margin-top:1.1rem">
+          <button class="btn" onclick="openView(${first.id})">Open</button>
+          ${readOnly ? '' : `
+            <select class="field-sel" style="max-width:14rem" onchange="quickMove(${first.id}, this.value)">
+              ${STATUSES.map(s => `<option value="${s.k}" ${s.k===first.status?'selected':''}>${s.label}</option>`).join('')}
+            </select>`}
+        </div>
+      </div>
+      ${queue ? `<div class="queue">${queue}</div>` : ''}`;
+  }
+
+  // Counters
+  const c = {
+    open:  openTasks().length,
+    going: tasks.filter(t => t.status === 'in-progress').length,
+    stuck: tasks.filter(t => t.status === 'blocked').length,
+    done:  tasks.filter(t => t.status === 'done').length
+  };
+  $('counters').innerHTML = `
+    <div class="counter"><div class="counter-n n-mute">${c.open}</div><div class="counter-l">Open</div></div>
+    <div class="counter"><div class="counter-n n-move">${c.going}</div><div class="counter-l">In progress</div></div>
+    <div class="counter"><div class="counter-n n-hold">${c.stuck}</div><div class="counter-l">Blocked</div></div>
+    <div class="counter"><div class="counter-n n-go">${c.done}</div><div class="counter-l">Done</div></div>`;
+
+  // By area
+  const areas = {};
+  openTasks().forEach(t => { const a = t.area || 'No area'; areas[a] = (areas[a]||0)+1; });
+  $('byArea').innerHTML = Object.keys(areas).length
+    ? Object.entries(areas).sort((a,b) => b[1]-a[1]).map(([a,n]) =>
+        `<div class="line"><span>${esc(a)}</span><span class="count-pill">${n}</span></div>`).join('')
+    : `<div class="meta">No open work.</div>`;
+
+  // By priority
+  const prios = {};
+  openTasks().forEach(t => { prios[t.priority] = (prios[t.priority]||0)+1; });
+  const order = ['critical','high','medium','low'].filter(p => prios[p]);
+  $('byPriority').innerHTML = order.length
+    ? order.map(p =>
+        `<div class="line"><span class="p-${p}">${label(p)}</span><span class="count-pill">${prios[p]}</span></div>`).join('')
+    : `<div class="meta">No open work.</div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER — PIPELINE
+   ══════════════════════════════════════════════════════════════ */
+
+function renderPipeline(){
+  $('board').innerHTML = STATUSES.map(s => {
+    const inCol = sortByUrgency(tasks.filter(t => t.status === s.k));
+    const cards = inCol.map(t => `
+      <div class="card" role="button" tabindex="0"
+           ${readOnly ? '' : 'draggable="true"'}
+           data-id="${t.id}"
+           onclick="openView(${t.id})"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openView(${t.id})}">
+        <div class="card-title">${esc(t.title)}</div>
+        <div class="card-foot">
+          <span class="p-${esc(t.priority)}">${esc(label(t.priority))}</span>
+          <span class="${dueClass(t.deadline)}" style="color:var(--mute)">${esc(dueText(t.deadline))}</span>
+        </div>
+        ${s.k === 'done' ? '' : runwayBar(t)}
+      </div>`).join('');
+
+    return `
+      <div class="col" data-status="${s.k}">
+        <div class="col-h">
+          <span class="col-name">${s.label}</span>
+          <span class="col-n">${inCol.length}</span>
+        </div>
+        ${cards || `<div class="col-empty">${readOnly ? 'Empty' : 'Drop a card here'}</div>`}
+      </div>`;
+  }).join('');
+
+  if(!readOnly) wireDrag();
+  $('boardHint').classList.toggle('hide', readOnly);
+}
+
+function wireDrag(){
+  let dragId = null;
+
+  document.querySelectorAll('.card[draggable]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragId = Number(card.dataset.id);
+      card.classList.add('card-drag');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+    });
+    card.addEventListener('dragend', () => card.classList.remove('card-drag'));
+  });
+
+  document.querySelectorAll('.col').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('col-drop'); });
+    col.addEventListener('dragleave', () => col.classList.remove('col-drop'));
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('col-drop');
+      const id = dragId ?? Number(e.dataTransfer.getData('text/plain'));
+      if(id) quickMove(id, col.dataset.status);
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER — REGISTER
+   ══════════════════════════════════════════════════════════════ */
+
+function renderRegister(){
+  if(!tasks.length){
+    $('regBody').innerHTML = `<tr><td colspan="6"><div class="col-empty">Nothing tracked yet.</div></td></tr>`;
+    return;
+  }
+  $('regBody').innerHTML = sortByUrgency(tasks).map(t => `
+    <tr>
+      <td class="cell-title">${esc(t.title)}</td>
+      <td class="meta">${esc(t.area || '—')}</td>
+      <td><span class="p-${esc(t.priority)}">${esc(label(t.priority))}</span></td>
+      <td>${chip(t.status)}</td>
+      <td>
+        <div>${esc(t.deadline || '—')}</div>
+        <div class="meta ${dueClass(t.deadline)}" style="font-size:.85rem">${esc(dueText(t.deadline))}</div>
+      </td>
+      <td class="t-right" style="white-space:nowrap">
+        <button class="btn btn-ghost" onclick="openView(${t.id})">Open</button>
+        ${readOnly ? '' : `<button class="btn btn-ghost" onclick="openEdit(${t.id})">Edit</button>`}
+      </td>
+    </tr>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER — HISTORY
+   ══════════════════════════════════════════════════════════════ */
+
+function renderHistory(){
+  if(!tasks.length){
+    $('histBody').innerHTML = `<div class="blank"><div class="blank-h">No history yet</div>
+      <div class="blank-p">Every status change gets logged here with its date.</div></div>`;
+    return;
+  }
+  $('histBody').innerHTML = sortByUrgency(tasks).map(t => `
+    <div class="hist">
+      <div class="hist-top">
+        <div>
+          <div class="hist-title">${esc(t.title)}</div>
+          <div class="hist-sub">${esc(t.area || 'No area')}${t.description ? ' · ' + esc(t.description) : ''}</div>
+        </div>
+        ${chip(t.status)}
+      </div>
+      <div class="track">
+        ${(t.log||[]).map(e => `
+          <div class="stop">
+            ${chip(e.status)}
+            ${e.note ? `<div class="stop-note">${esc(e.note)}</div>` : ''}
+            <div class="stop-when">${esc(e.date)}</div>
+          </div>`).join('') || '<div class="meta">Nothing logged.</div>'}
+      </div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PAINT
+   ══════════════════════════════════════════════════════════════ */
+
+function paint(){
+  if(screen === 'today')    renderToday();
+  if(screen === 'pipeline') renderPipeline();
+  if(screen === 'register') renderRegister();
+  if(screen === 'history')  renderHistory();
+
+}
+
+function commit(){
+  store.write(tasks);
+  paint();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TABS
+   ══════════════════════════════════════════════════════════════ */
+
+$('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if(!tab) return;
+  screen = tab.dataset.screen;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('tab-on', t === tab));
+  document.querySelectorAll('.screen').forEach(s =>
+    s.classList.toggle('screen-on', s.id === 's-' + screen));
+  paint();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   EDIT / ADD
+   ══════════════════════════════════════════════════════════════ */
+
+function openAdd(){
+  if(readOnly) return;
+  editingId = null;
+  $('editTitle').textContent = 'New task';
+  $('fTitle').value = '';
+  $('fDesc').value = '';
+  $('fArea').value = 'KODE Labs';
+  $('fPriority').value = 'medium';
+  $('fStatus').value = 'backlog';
+  $('fDeadline').value = '';
+  $('fNote').value = '';
+  $('deleteBtn').classList.add('hide');
+  $('saveBtn').textContent = 'Save task';
+  $('editVeil').classList.add('veil-on');
+  $('fTitle').focus();
+}
+
+function openEdit(id){
+  if(readOnly) return;
+  const t = tasks.find(t => t.id === id);
+  if(!t) return;
+  closeView();
+  editingId = id;
+  $('editTitle').textContent = 'Edit task';
+  $('fTitle').value = t.title || '';
+  $('fDesc').value = t.description || '';
+  const AREAS = ['KODE Labs','Interventions','Process and Policy','R&D','Reports and Reviews'];
+  $('fArea').value = AREAS.includes(t.area) ? t.area : 'KODE Labs';
+  $('fPriority').value = t.priority || 'medium';
+  $('fStatus').value = t.status || 'backlog';
+  $('fDeadline').value = t.deadline || '';
+  $('fNote').value = '';
+  $('deleteBtn').classList.remove('hide');
+  $('saveBtn').textContent = 'Save changes';
+  $('editVeil').classList.add('veil-on');
+  $('fTitle').focus();
+}
+
+function closeEdit(){
+  $('editVeil').classList.remove('veil-on');
+  editingId = null;
+}
+
+async function saveTask(){
+  const title = $('fTitle').value.trim();
+  if(!title){
+    say('A task needs a title');
+    $('fTitle').focus();
+    return;
+  }
+
+  const status = $('fStatus').value;
+  const note   = $('fNote').value.trim();
+
+  if(editingId === null){
+    // NEW TASK
+    const id = tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+    const newTask = {
+      id, title,
+      description: $('fDesc').value.trim(),
+      area:        $('fArea').value.trim(),
+      priority:    $('fPriority').value,
+      deadline:    $('fDeadline').value,
+      status,
+      log: [{status, date: isoToday(), note: note || 'Added to tracker'}]
+    };
+    
+    if(USE_SUPABASE){
+      const result = await addTaskRemote(newTask);
+      if(!result) return;  // error already shown
+    }
+    
+    tasks.push(newTask);
+    say('Task added');
+  } else {
+    // EDIT EXISTING
+    const t = tasks.find(t => t.id === editingId);
+    const moved = t.status !== status;
+    
+    t.title       = title;
+    t.description = $('fDesc').value.trim();
+    t.area        = $('fArea').value.trim();
+    t.priority    = $('fPriority').value;
+    t.deadline    = $('fDeadline').value;
+    t.status      = status;
+    
+    if(moved || note){
+      t.log = t.log || [];
+      t.log.push({status, date: isoToday(), note: note || `Moved to ${label(status)}`});
+    }
+    
+    if(USE_SUPABASE){
+      const result = await updateTaskRemote(editingId, t);
+      if(!result) return;  // error already shown
+    }
+    
+    say('Changes saved');
+  }
+
+  closeEdit();
+  commit();
+}
+
+async function deleteTask(){
+  if(editingId === null) return;
+  const t = tasks.find(t => t.id === editingId);
+  if(!confirm(`Delete "${t.title}"? This can't be undone.`)) return;
+  
+  if(USE_SUPABASE){
+    const ok = await deleteTaskRemote(editingId);
+    if(!ok) return;  // error already shown
+  }
+  
+  tasks = tasks.filter(t => t.id !== editingId);
+  closeEdit();
+  commit();
+  say('Task deleted');
+}
+
+async function quickMove(id, status){
+  if(readOnly) return;
+  const t = tasks.find(t => t.id === id);
+  if(!t || t.status === status) return;
+  
+  t.status = status;
+  t.log = t.log || [];
+  t.log.push({status, date: isoToday(), note: `Moved to ${label(status)}`});
+  
+  if(USE_SUPABASE){
+    const result = await updateTaskRemote(id, t);
+    if(!result) return;  // error already shown
+  }
+  
+  commit();
+  say(`Moved to ${label(status)}`);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DETAIL
+   ══════════════════════════════════════════════════════════════ */
+
+function openView(id){
+  const t = tasks.find(t => t.id === id);
+  if(!t) return;
+  $('vTitle').textContent = t.title;
+  $('vDesc').textContent  = t.description || '';
+  $('vDesc').style.display = t.description ? '' : 'none';
+  $('vArea').textContent = t.area || '—';
+  $('vPriority').innerHTML = `<span class="p-${esc(t.priority)}">${esc(label(t.priority))}</span>`;
+  $('vStatus').innerHTML = chip(t.status);
+  $('vDeadline').innerHTML = t.deadline
+    ? `${esc(t.deadline)}<div class="meta ${dueClass(t.deadline)}" style="font-size:.85rem">${esc(dueText(t.deadline))}</div>`
+    : '—';
+
+  $('vLog').innerHTML = (t.log||[]).map(e => `
+    <div class="log-row">
+      <span>${chip(e.status)} ${esc(e.note || '')}</span>
+      <span class="log-when">${esc(e.date)}</span>
+    </div>`).join('') || '<div class="meta">Nothing logged.</div>';
+
+  const eb = $('vEditBtn');
+  eb.classList.toggle('hide', readOnly);
+  eb.onclick = () => openEdit(id);
+
+  $('viewVeil').classList.add('veil-on');
+}
+
+function closeView(){ $('viewVeil').classList.remove('veil-on'); }
+
+document.querySelectorAll('.veil').forEach(v => {
+  v.addEventListener('click', e => { if(e.target === v) v.classList.remove('veil-on'); });
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){ closeEdit(); closeView(); }
+  if(e.key === 'Enter' && $('editVeil').classList.contains('veil-on')
+     && e.target.tagName !== 'TEXTAREA'){ saveTask(); }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   READ-ONLY / SHARE
+   ══════════════════════════════════════════════════════════════ */
+
+function applyReadOnly(){
+  $('roBanner').classList.toggle('hide', !readOnly);
+  $('addBtn').classList.toggle('hide', readOnly);
+  $('shareBtn').classList.toggle('hide', readOnly);
+  $('importBtn').classList.toggle('hide', readOnly);
+  $('clearBtn').classList.toggle('hide', readOnly);
+}
+
+function shareLink(){
+  const url = location.origin + location.pathname + '?view=readonly';
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(url)
+      .then(() => say('Read-only link copied'))
+      .catch(() => prompt('Copy this link:', url));
+  } else {
+    prompt('Copy this link:', url);
+  }
+}
+
+function exitReadOnly(){
+  location.href = location.origin + location.pathname;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BACKUP
+   ══════════════════════════════════════════════════════════════ */
+
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(tasks, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `tracker-${isoToday()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  say('Backup downloaded');
+}
+
+function importJSON(){ $('fileIn').click(); }
+
+async function clearAll(){
+  if(readOnly) return;
+  if(!tasks.length){ say('Nothing to clear'); return; }
+  if(!confirm(`Delete all ${tasks.length} tasks and start fresh? Download a backup first if you're not sure.`)) return;
+
+  if(USE_SUPABASE){
+    for(const t of tasks){
+      const ok = await deleteTaskRemote(t.id);
+      if(!ok) return;   // stop on first failure; error already shown
+    }
+  }
+
+  tasks = [];
+  commit();
+  say('All tasks cleared — add your first one');
+}
+
+$('fileIn').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(!Array.isArray(data)) throw new Error('Not a task list');
+      tasks = data;
+      commit();
+      say(`Restored ${data.length} task${data.length===1?'':'s'}`);
+    }catch(err){
+      say("That file isn't a tracker backup");
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+/* ══════════════════════════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════════════════════════ */
+
+async function boot(){
+  if(USE_SUPABASE){
+    const loaded = await loadRemote();
+    if(Array.isArray(loaded)){
+      // Whatever the database holds is the truth — including nothing at all.
+      tasks = loaded;
+      store.write(tasks);
+    } else {
+      // Connection failed. Use the cached copy so you're not staring at nothing.
+      tasks = store.read() ?? [];
+      say(loadProblem);
+    }
+  } else {
+    tasks = store.read() ?? [];
+    pipLocal();
+  }
+
+  applyReadOnly();
+  paint();
+
+  if(memoryOnly){
+    say('Saving is off in this preview — changes last until you reload');
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
